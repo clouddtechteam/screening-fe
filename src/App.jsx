@@ -12,7 +12,7 @@ export default function App() {
   const [sourceLists, setSourceLists] = useState({
     lastCheckDate: todayStr,
     sources: {
-      OFAC: { name: 'OFAC Sanctions Search (US Treasury)', status: 'ACTIVE', downloadDate: todayStr, timestamp: new Date().toISOString() },
+      OFAC: { name: 'OFAC Sanctions Search (US Treasury )', status: 'ACTIVE', downloadDate: todayStr, timestamp: new Date().toISOString() },
       UN: { name: 'UN Security Council Consolidated List', status: 'ACTIVE', downloadDate: todayStr, timestamp: new Date().toISOString() },
       UAE: { name: 'UAE IEC Local Terrorist & Sanctions List', status: 'ACTIVE', downloadDate: todayStr, timestamp: new Date().toISOString() }
     }
@@ -80,7 +80,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f1f5f9' }}>
-      
+
       {/* Navigation Header */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
