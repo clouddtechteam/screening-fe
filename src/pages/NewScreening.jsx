@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Icons } from '../components/Icons';
 import SourceListsBar from '../components/SourceListsBar';
+import { apiUrl } from '../config/api';
 
 export default function NewScreening({
   sourceLists,
@@ -62,7 +63,7 @@ export default function NewScreening({
         checkDate: formData.checkDate
       };
 
-      const res = await fetch('/api/screenings/start', {
+      const res = await fetch(apiUrl('/api/screenings/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -325,7 +326,7 @@ export default function NewScreening({
             </div>
 
             <a
-              href={`/api/screenings/${caseResult.id}/download-zip`}
+              href={apiUrl(`/api/screenings/${caseResult.id}/download-zip`)}
               className="btn-secondary"
               style={{ backgroundColor: '#eff6ff', borderColor: '#bfdbfe', color: '#1d4ed8' }}
             >
@@ -385,7 +386,7 @@ export default function NewScreening({
 
                 <div style={{ paddingTop: '8px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end' }}>
                   <a
-                    href={`/api/screenings/${caseResult.id}/download/${encodeURIComponent(file.filename)}`}
+                    href={apiUrl(`/api/screenings/${caseResult.id}/download/${encodeURIComponent(file.filename)}`)}
                     className="btn-secondary"
                     style={{ fontSize: '12px', padding: '6px 12px' }}
                   >

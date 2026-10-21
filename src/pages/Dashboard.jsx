@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from '../components/Icons';
+import { apiUrl } from '../config/api';
 
 export default function Dashboard({ cases, onViewCase, onNewScreeningClick }) {
   const totalCases = cases.length;
@@ -116,7 +117,7 @@ export default function Dashboard({ cases, onViewCase, onNewScreeningClick }) {
                           View 4 PDFs
                         </button>
                         <a
-                          href={`/api/screenings/${c.id}/download-zip`}
+                          href={apiUrl(`/api/screenings/${c.id}/download-zip`)}
                           className="btn-secondary"
                           style={{ padding: '5px 10px', fontSize: '11.5px', color: '#1d4ed8' }}
                           title="Download ZIP"

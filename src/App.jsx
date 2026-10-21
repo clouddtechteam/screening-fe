@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import NewScreening from './pages/NewScreening';
 import Dashboard from './pages/Dashboard';
 import SourceListsPage from './pages/SourceListsPage';
+import { apiUrl } from './config/api';
 
 export default function App() {
   const todayStr = new Date().toISOString().split('T')[0];
@@ -26,7 +27,7 @@ export default function App() {
 
   const fetchCases = async () => {
     try {
-      const res = await fetch('/api/screenings');
+      const res = await fetch(apiUrl('/api/screenings'));
       if (res.ok) {
         const data = await res.json();
         setCases(data);
@@ -38,7 +39,7 @@ export default function App() {
 
   const fetchSourceListStatus = async () => {
     try {
-      const res = await fetch('/api/source-lists/status');
+      const res = await fetch(apiUrl('/api/source-lists/status'));
       if (res.ok) {
         const data = await res.json();
         if (data.sources && Object.keys(data.sources).length > 0) {
@@ -53,7 +54,7 @@ export default function App() {
   const handleRefreshLists = async () => {
     setRefreshingLists(true);
     try {
-      const res = await fetch('/api/source-lists/refresh', { method: 'POST' });
+      const res = await fetch(apiUrl('/api/source-lists/refresh'), { method: 'POST' });
       const data = await res.json();
       if (data.success && data.sources) {
         setSourceLists({
