@@ -38,10 +38,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
           </div>
           <div>
             <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              VERITAS <span style={{ color: '#1d4ed8', fontWeight: 600 }}>COMPLIANCE</span>
-            </div>
-            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
-              Client & Shareholder Due Diligence Screening
+              SCREENING <span style={{ color: '#1d4ed8', fontWeight: 600 }}>PORTAL</span>
             </div>
           </div>
         </div>
@@ -108,14 +105,6 @@ export default function Navbar({ activeTab, setActiveTab }) {
             <span>Official Lists</span>
           </button>
         </nav>
-
-        {/* System Active Tag */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="badge-clear">
-            <Icons.CheckCircle />
-            <span>Engines Active</span>
-          </span>
-        </div>
       </div>
     </header>
   );

@@ -122,7 +122,7 @@ export default function App() {
         fontSize: '12px',
         color: '#64748b'
       }}>
-        Veritas Client Due Diligence & Screening System | Google Adverse Media, OFAC, UN Consolidated, and UAE IEC Lists
+        Screening Portal
       </footer>
 
     </div>
