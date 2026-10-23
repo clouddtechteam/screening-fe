@@ -9,6 +9,7 @@ export default function App() {
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [activeTab, setActiveTab] = useState('new-screening'); // 'new-screening' | 'dashboard' | 'source-lists'
+  const [activeCaseResult, setActiveCaseResult] = useState(null);
   const [cases, setCases] = useState([]);
   const [sourceLists, setSourceLists] = useState({
     lastCheckDate: todayStr,
@@ -71,9 +72,11 @@ export default function App() {
 
   const handleCaseCreated = (newCase) => {
     setCases(prev => [newCase, ...prev]);
+    setActiveCaseResult(newCase);
   };
 
   const handleViewCase = (selectedCase) => {
+    setActiveCaseResult(selectedCase);
     setActiveTab('new-screening');
     // scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -93,6 +96,7 @@ export default function App() {
             refreshingLists={refreshingLists}
             onRefreshLists={handleRefreshLists}
             onCaseCreated={handleCaseCreated}
+            initialCaseResult={activeCaseResult}
           />
         )}
 

@@ -1,15 +1,21 @@
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+
+  // Required for Electron to load built assets locally
+  base: './',
+
   server: {
     port: 5173,
     proxy: {
       '/api': {
         target: 'https://screening-be-3mzl.onrender.com',
-        changeOrigin: true,
-        secure: false
+        // target: 'http://127.0.0.1:5001',
+
+        changeOrigin: true
       }
     }
   }

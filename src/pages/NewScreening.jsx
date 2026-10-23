@@ -1,40 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../components/Icons';
 import SourceListsBar from '../components/SourceListsBar';
+import PdfViewerModal from '../components/PdfViewerModal';
 import { apiUrl } from '../config/api';
 
 export default function NewScreening({
   sourceLists,
   refreshingLists,
   onRefreshLists,
-  onCaseCreated
+  onCaseCreated,
+  initialCaseResult = null
 }) {
   const todayStr = new Date().toISOString().split('T')[0];
 
+  const getDefaultQuery = (name) => {
+    if (!name || !name.trim()) return '';
+    return `"${name.trim()}" criminal OR fraud OR sanctions OR charges OR arrest`;
+  };
+
+  // Form starts clean without hardcoded dummy/sample values
   const [formData, setFormData] = useState({
-    subjectName: 'Jerin Davis',
+    subjectName: '',
     subjectType: 'Individual', // Individual or Entity
-    clientRef: 'CL-2026-089',
-    issDate: todayStr,
-    hasExpiry: true,
-    expDate: '2027-10-20',
-    signedDate: todayStr,
-    checkDate: todayStr
+    clientAccountName: '',
+    selectedDateType: null, // 'issDate' | 'expDate' | 'signedDate' | null
+    issDate: '',
+    expDate: '',
+    signedDate: '',
+    checkDate: todayStr,
+    googleSearchQuery: ''
   });
 
+  const [queryCustomized, setQueryCustomized] = useState(false);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(0);
-  const [caseResult, setCaseResult] = useState(null);
+  const [caseResult, setCaseResult] = useState(initialCaseResult);
   const [errorMsg, setErrorMsg] = useState('');
+  const [viewingPdf, setViewingPdf] = useState(null);
 
-  // Live formatted filenames
-  const cleanName = (formData.subjectName || 'Subject_Name').trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
-  const expVal = formData.hasExpiry && formData.expDate ? formData.expDate : 'NotSet';
+  useEffect(() => {
+    if (initialCaseResult) {
+      setCaseResult(initialCaseResult);
+    }
+  }, [initialCaseResult]);
+
+  // Handle subject name change and sync default query if not manually customized
+  const handleSubjectNameChange = (name) => {
+    setFormData(prev => ({
+      ...prev,
+      subjectName: name,
+      googleSearchQuery: queryCustomized
+        ? prev.googleSearchQuery
+        : (name.trim() ? getDefaultQuery(name) : '')
+    }));
+  };
+
+  // Mutually exclusive date selector: only one date type active at a time
+  const handleToggleDateType = (type) => {
+    setFormData(prev => {
+      if (prev.selectedDateType === type) {
+        // Deselect if already active
+        return { ...prev, selectedDateType: null };
+      }
+      return { ...prev, selectedDateType: type };
+    });
+  };
+
+  // Live formatted filenames (spaces removed, only selected date in YYYYMMDD, no NotSet, Clear tag)
+  const cleanName = formData.subjectName.trim()
+    ? formData.subjectName.trim().replace(/\s+/g, '').replace(/[^a-zA-Z0-9-]/g, '')
+    : 'SubjectName';
+
+  let datePart = '';
+  if (formData.selectedDateType === 'issDate' && formData.issDate) {
+    const ymd = formData.issDate.replace(/\D/g, '');
+    if (ymd) datePart = `_Iss_${ymd}`;
+  } else if (formData.selectedDateType === 'expDate' && formData.expDate) {
+    const ymd = formData.expDate.replace(/\D/g, '');
+    if (ymd) datePart = `_Exp_${ymd}`;
+  } else if (formData.selectedDateType === 'signedDate' && formData.signedDate) {
+    const ymd = formData.signedDate.replace(/\D/g, '');
+    if (ymd) datePart = `_Signed_${ymd}`;
+  }
+
   const previewFilenames = {
-    adverseMedia: `COMAdverseMedia_${cleanName}_Iss_${formData.issDate || 'NotSet'}_Exp_${expVal}_Signed_${formData.signedDate || 'NotSet'}.pdf`,
-    ofac: `COMOFAC_${cleanName}_Iss_${formData.issDate || 'NotSet'}_Exp_${expVal}_Signed_${formData.signedDate || 'NotSet'}.pdf`,
-    un: `COMUN_${cleanName}_Iss_${formData.issDate || 'NotSet'}_Exp_${expVal}_Signed_${formData.signedDate || 'NotSet'}.pdf`,
-    uae: `COMUAE_${cleanName}_Iss_${formData.issDate || 'NotSet'}_Exp_${expVal}_Signed_${formData.signedDate || 'NotSet'}.pdf`
+    adverseMedia: `COMAdverseMedia_${cleanName}${datePart}_Clear.pdf`,
+    ofac: `COMOFAC_${cleanName}${datePart}_Clear.pdf`,
+    un: `COMUN_${cleanName}${datePart}_Clear.pdf`,
+    uae: `COMUAE_${cleanName}${datePart}_Clear.pdf`
   };
 
   const handleStartScreening = async (e) => {
@@ -53,14 +106,23 @@ export default function NewScreening({
     }, 1200);
 
     try {
+      const activeDateVal =
+        formData.selectedDateType === 'issDate' ? formData.issDate :
+        formData.selectedDateType === 'expDate' ? formData.expDate :
+        formData.selectedDateType === 'signedDate' ? formData.signedDate : '';
+
       const payload = {
         subjectName: formData.subjectName.trim(),
         subjectType: formData.subjectType,
-        clientRef: formData.clientRef,
-        issDate: formData.issDate,
-        expDate: formData.hasExpiry ? formData.expDate : 'NotSet',
-        signedDate: formData.signedDate,
-        checkDate: formData.checkDate
+        clientAccountName: formData.clientAccountName.trim(),
+        clientRef: formData.clientAccountName.trim(), // backward compat
+        selectedDateType: formData.selectedDateType,
+        selectedDate: activeDateVal,
+        issDate: formData.selectedDateType === 'issDate' ? formData.issDate : '',
+        expDate: formData.selectedDateType === 'expDate' ? formData.expDate : '',
+        signedDate: formData.selectedDateType === 'signedDate' ? formData.signedDate : '',
+        checkDate: formData.checkDate,
+        googleSearchQuery: (formData.googleSearchQuery || getDefaultQuery(formData.subjectName)).trim()
       };
 
       const res = await fetch(apiUrl('/api/screenings/start'), {
@@ -134,7 +196,7 @@ export default function NewScreening({
                   type="text"
                   className="form-input"
                   value={formData.subjectName}
-                  onChange={(e) => setFormData({ ...formData, subjectName: e.target.value })}
+                  onChange={(e) => handleSubjectNameChange(e.target.value)}
                   placeholder="e.g. Jerin Davis or Acme General Trading LLC"
                   required
                   style={{ paddingLeft: '38px', fontSize: '15px', fontWeight: 600, color: '#0f172a' }}
@@ -158,76 +220,215 @@ export default function NewScreening({
               </select>
             </div>
 
-            {/* Client Reference */}
+            {/* Client Account Name */}
             <div>
-              <label className="form-label">Client / Case Reference</label>
+              <label className="form-label">Client Account Name (Parent Company)</label>
               <input
                 type="text"
                 className="form-input"
-                value={formData.clientRef}
-                onChange={(e) => setFormData({ ...formData, clientRef: e.target.value })}
-                placeholder="e.g. CL-2026-089"
+                value={formData.clientAccountName}
+                onChange={(e) => setFormData({ ...formData, clientAccountName: e.target.value })}
+                placeholder="e.g. Acme Corporation or Apex Holdings Ltd"
               />
             </div>
+          </div>
 
-            {/* Issue Date */}
-            <div>
-              <label className="form-label">Issue Date (Iss) *</label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.issDate}
-                onChange={(e) => setFormData({ ...formData, issDate: e.target.value })}
-                required
-              />
-            </div>
-
-            {/* Expiry Date */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label className="form-label" style={{ margin: 0 }}>Expiry Date (Exp)</label>
-                <label style={{ fontSize: '11px', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.hasExpiry}
-                    onChange={(e) => setFormData({ ...formData, hasExpiry: e.target.checked })}
-                  />
-                  <span>Has Expiry</span>
-                </label>
+          {/* Mutually Exclusive Compliance Date Selection */}
+          <div style={{
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: '18px 20px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                  Compliance Date Selection (Mutually Exclusive)
+                </span>
+                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+                  Select at most one applicable date type to include in the compliance filename. The other two will be kept blank.
+                </p>
               </div>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.expDate}
-                onChange={(e) => setFormData({ ...formData, expDate: e.target.value })}
-                disabled={!formData.hasExpiry}
-                style={{ opacity: formData.hasExpiry ? 1 : 0.4 }}
-              />
+              {formData.selectedDateType && (
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, selectedDateType: null })}
+                  className="btn-secondary"
+                  style={{ fontSize: '11px', padding: '4px 8px' }}
+                >
+                  Clear Date Selection
+                </button>
+              )}
             </div>
 
-            {/* Signed Date */}
-            <div>
-              <label className="form-label">Signed Date *</label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.signedDate}
-                onChange={(e) => setFormData({ ...formData, signedDate: e.target.value })}
-                required
-              />
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              
+              {/* Issue Date */}
+              <div style={{
+                backgroundColor: formData.selectedDateType === 'issDate' ? '#ffffff' : '#f1f5f9',
+                border: formData.selectedDateType === 'issDate' ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '12px',
+                transition: 'all 0.2s ease'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>Issue Date (Iss)</label>
+                  <label style={{ fontSize: '11.5px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.selectedDateType === 'issDate'}
+                      onChange={() => handleToggleDateType('issDate')}
+                    />
+                    <span>Has Issue Date</span>
+                  </label>
+                </div>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={formData.issDate}
+                  onChange={(e) => setFormData({ ...formData, issDate: e.target.value })}
+                  disabled={formData.selectedDateType !== 'issDate'}
+                  style={{
+                    opacity: formData.selectedDateType === 'issDate' ? 1 : 0.45,
+                    backgroundColor: formData.selectedDateType === 'issDate' ? '#ffffff' : '#f8fafc'
+                  }}
+                />
+              </div>
 
-            {/* Check Date */}
-            <div>
-              <label className="form-label">Source Check Date *</label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.checkDate}
-                onChange={(e) => setFormData({ ...formData, checkDate: e.target.value })}
-                required
-              />
+              {/* Expiry Date */}
+              <div style={{
+                backgroundColor: formData.selectedDateType === 'expDate' ? '#ffffff' : '#f1f5f9',
+                border: formData.selectedDateType === 'expDate' ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '12px',
+                transition: 'all 0.2s ease'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>Expiry Date (Exp)</label>
+                  <label style={{ fontSize: '11.5px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.selectedDateType === 'expDate'}
+                      onChange={() => handleToggleDateType('expDate')}
+                    />
+                    <span>Has Expiry</span>
+                  </label>
+                </div>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={formData.expDate}
+                  onChange={(e) => setFormData({ ...formData, expDate: e.target.value })}
+                  disabled={formData.selectedDateType !== 'expDate'}
+                  style={{
+                    opacity: formData.selectedDateType === 'expDate' ? 1 : 0.45,
+                    backgroundColor: formData.selectedDateType === 'expDate' ? '#ffffff' : '#f8fafc'
+                  }}
+                />
+              </div>
+
+              {/* Signed Date */}
+              <div style={{
+                backgroundColor: formData.selectedDateType === 'signedDate' ? '#ffffff' : '#f1f5f9',
+                border: formData.selectedDateType === 'signedDate' ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '12px',
+                transition: 'all 0.2s ease'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>Signed Date</label>
+                  <label style={{ fontSize: '11.5px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.selectedDateType === 'signedDate'}
+                      onChange={() => handleToggleDateType('signedDate')}
+                    />
+                    <span>Has Signed</span>
+                  </label>
+                </div>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={formData.signedDate}
+                  onChange={(e) => setFormData({ ...formData, signedDate: e.target.value })}
+                  disabled={formData.selectedDateType !== 'signedDate'}
+                  style={{
+                    opacity: formData.selectedDateType === 'signedDate' ? 1 : 0.45,
+                    backgroundColor: formData.selectedDateType === 'signedDate' ? '#ffffff' : '#f8fafc'
+                  }}
+                />
+              </div>
+
+              {/* Check Date (Audit timestamp) */}
+              <div style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '12px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>Source Check Date *</label>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>Audit timestamp</span>
+                </div>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={formData.checkDate}
+                  onChange={(e) => setFormData({ ...formData, checkDate: e.target.value })}
+                  required
+                />
+              </div>
+
             </div>
+          </div>
+
+          {/* Editable Google Adverse Media Search Query */}
+          <div style={{
+            backgroundColor: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: '10px',
+            padding: '16px 20px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <label className="form-label" style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                  Google Adverse Media Search Query (Editable)
+                </label>
+                <p style={{ fontSize: '11.5px', color: '#64748b', margin: 0 }}>
+                  Modify the keywords and search criteria before screening or use the default compliance adverse media query.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, googleSearchQuery: getDefaultQuery(prev.subjectName) }));
+                  setQueryCustomized(false);
+                }}
+                className="btn-secondary"
+                style={{ fontSize: '11.5px', padding: '4px 10px' }}
+              >
+                Reset to Default Query
+              </button>
+            </div>
+            <textarea
+              className="form-input"
+              rows={2}
+              value={formData.googleSearchQuery}
+              onChange={(e) => {
+                setQueryCustomized(true);
+                setFormData({ ...formData, googleSearchQuery: e.target.value });
+              }}
+              placeholder='Auto-generates as you enter a Subject Name, e.g. "Subject Name" criminal OR fraud OR sanctions OR charges OR arrest'
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '12.5px',
+                lineHeight: '1.5',
+                color: '#0f172a',
+                resize: 'vertical'
+              }}
+            />
           </div>
 
           {/* Standardized Filenames Preview */}
@@ -242,7 +443,9 @@ export default function NewScreening({
               <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#1d4ed8' }}>
                 Standardized Evidence Filenames Preview
               </span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>Generated on screening completion</span>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                Appends _Clear.pdf or _NotClear.pdf based on outcome
+              </span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: '#0f172a' }}>
@@ -274,18 +477,30 @@ export default function NewScreening({
                     {step === 4 && 'Scanning UN & UAE lists and generating 4 PDFs...'}
                   </div>
                 </div>
-              ) : (
+              ) : formData.subjectName.trim() ? (
                 <span style={{ fontSize: '12.5px', color: '#64748b' }}>
                   Ready to screen subject: <strong style={{ color: '#0f172a' }}>{formData.subjectName}</strong>
+                  {formData.clientAccountName && (
+                    <span> under company: <strong style={{ color: '#0f172a' }}>{formData.clientAccountName}</strong></span>
+                  )}
+                </span>
+              ) : (
+                <span style={{ fontSize: '12.5px', color: '#94a3b8' }}>
+                  Enter subject name and details above to initiate screening
                 </span>
               )}
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !formData.subjectName.trim()}
               className="btn-primary"
-              style={{ padding: '12px 28px', fontSize: '14.5px' }}
+              style={{
+                padding: '12px 28px',
+                fontSize: '14.5px',
+                opacity: (!formData.subjectName.trim() && !loading) ? 0.6 : 1,
+                cursor: (!formData.subjectName.trim() && !loading) ? 'not-allowed' : 'pointer'
+              }}
             >
               {loading ? (
                 <>
@@ -320,6 +535,7 @@ export default function NewScreening({
               </div>
               <p style={{ fontSize: '12px', color: '#64748b' }}>
                 Case ID: <span style={{ fontFamily: 'var(--font-mono)', color: '#0f172a' }}>{caseResult.id}</span> | 
+                Client Account: <strong style={{ color: '#0f172a' }}>{caseResult.clientAccountName || caseResult.clientRef || 'N/A'}</strong> | 
                 Generated on: {new Date(caseResult.createdAt).toLocaleString()} | 
                 Type: {caseResult.subjectType}
               </p>
@@ -335,7 +551,7 @@ export default function NewScreening({
             </a>
           </div>
 
-          {/* 4 Cards for 4 Generated PDFs */}
+          {/* 4 Cards for 4 Generated PDFs with In-App Preview & Download */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             {caseResult.files.map((file) => (
               <div
@@ -384,20 +600,41 @@ export default function NewScreening({
                   </p>
                 </div>
 
-                <div style={{ paddingTop: '8px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ paddingTop: '8px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setViewingPdf(file)}
+                    className="btn-primary"
+                    style={{ fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    title="View PDF inside the application"
+                  >
+                    <Icons.Eye />
+                    <span>View Inside</span>
+                  </button>
+
                   <a
                     href={apiUrl(`/api/screenings/${caseResult.id}/download/${encodeURIComponent(file.filename)}`)}
                     className="btn-secondary"
-                    style={{ fontSize: '12px', padding: '6px 12px' }}
+                    style={{ fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    title="Download PDF directly"
                   >
                     <Icons.Download />
-                    <span>Download PDF</span>
+                    <span>Download</span>
                   </a>
                 </div>
               </div>
             ))}
           </div>
         </section>
+      )}
+
+      {/* In-App PDF Preview Modal */}
+      {viewingPdf && caseResult && (
+        <PdfViewerModal
+          file={viewingPdf}
+          caseId={caseResult.id}
+          onClose={() => setViewingPdf(null)}
+        />
       )}
 
     </div>
