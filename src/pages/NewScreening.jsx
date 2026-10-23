@@ -108,8 +108,8 @@ export default function NewScreening({
     try {
       const activeDateVal =
         formData.selectedDateType === 'issDate' ? formData.issDate :
-        formData.selectedDateType === 'expDate' ? formData.expDate :
-        formData.selectedDateType === 'signedDate' ? formData.signedDate : '';
+          formData.selectedDateType === 'expDate' ? formData.expDate :
+            formData.selectedDateType === 'signedDate' ? formData.signedDate : '';
 
       const payload = {
         subjectName: formData.subjectName.trim(),
@@ -147,7 +147,7 @@ export default function NewScreening({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+
       {/* Official Lists Top Bar */}
       <SourceListsBar
         sourceLists={sourceLists}
@@ -187,7 +187,7 @@ export default function NewScreening({
 
         <form onSubmit={handleStartScreening}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-            
+
             {/* Subject Name */}
             <div style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Subject Name (Individual or Entity) *</label>
@@ -263,7 +263,7 @@ export default function NewScreening({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-              
+
               {/* Issue Date */}
               <div style={{
                 backgroundColor: formData.selectedDateType === 'issDate' ? '#ffffff' : '#f1f5f9',
@@ -534,9 +534,9 @@ export default function NewScreening({
                 )}
               </div>
               <p style={{ fontSize: '12px', color: '#64748b' }}>
-                Case ID: <span style={{ fontFamily: 'var(--font-mono)', color: '#0f172a' }}>{caseResult.id}</span> | 
-                Client Account: <strong style={{ color: '#0f172a' }}>{caseResult.clientAccountName || caseResult.clientRef || 'N/A'}</strong> | 
-                Generated on: {new Date(caseResult.createdAt).toLocaleString()} | 
+                Case ID: <span style={{ fontFamily: 'var(--font-mono)', color: '#0f172a' }}>{caseResult.id}</span> |
+                Client Account: <strong style={{ color: '#0f172a' }}>{caseResult.clientAccountName || caseResult.clientRef || 'N/A'}</strong> |
+                Generated on: {new Date(caseResult.createdAt).toLocaleString()} |
                 Type: {caseResult.subjectType}
               </p>
             </div>
@@ -609,7 +609,7 @@ export default function NewScreening({
                     title="View PDF inside the application"
                   >
                     <Icons.Eye />
-                    <span>View Inside</span>
+                    <span>View</span>
                   </button>
 
                   <a
