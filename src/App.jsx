@@ -82,6 +82,13 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleCaseDeleted = (deletedId) => {
+    setCases(prev => prev.filter(c => c.id !== deletedId));
+    if (activeCaseResult && activeCaseResult.id === deletedId) {
+      setActiveCaseResult(null);
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f1f5f9' }}>
 
@@ -105,6 +112,7 @@ export default function App() {
             cases={cases}
             onViewCase={handleViewCase}
             onNewScreeningClick={() => setActiveTab('new-screening')}
+            onCaseDeleted={handleCaseDeleted}
           />
         )}
 
@@ -126,7 +134,7 @@ export default function App() {
         fontSize: '12px',
         color: '#64748b'
       }}>
-        Screening Portal
+        © {new Date().getFullYear()} EER Compliance Sanctions &amp; Adverse Media Screener
       </footer>
 
     </div>

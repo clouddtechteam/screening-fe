@@ -2,9 +2,36 @@ import React, { useState, useMemo } from 'react';
 import { Icons } from '../components/Icons';
 import { apiUrl } from '../config/api';
 
-export default function Dashboard({ cases, onViewCase, onNewScreeningClick }) {
+export default function Dashboard({ cases, onViewCase, onNewScreeningClick, onCaseDeleted }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCompanies, setExpandedCompanies] = useState({});
+  const [caseToDelete, setCaseToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const confirmDeleteCase = async () => {
+    if (!caseToDelete) return;
+    try {
+      setIsDeleting(true);
+      setDeleteError('');
+      const res = await fetch(apiUrl(`/api/screenings/${caseToDelete.id}`), {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete record from storage');
+      }
+      if (onCaseDeleted) {
+        onCaseDeleted(caseToDelete.id);
+      }
+      setCaseToDelete(null);
+    } catch (err) {
+      console.error('Delete failed:', err);
+      setDeleteError(err.message || 'Failed to delete case.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const totalCases = cases.length;
   const clearedCases = cases.filter(c => c.overallStatus === 'PASSED_CLEARED').length;
@@ -346,7 +373,7 @@ export default function Dashboard({ cases, onViewCase, onNewScreeningClick }) {
                                   )}
                                 </td>
                                 <td style={{ padding: '12px 12px', textAlign: 'right' }}>
-                                  <div style={{ display: 'inline-flex', gap: '8px' }}>
+                                  <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
                                     <button
                                       onClick={() => onViewCase(c)}
                                       className="btn-secondary"
@@ -357,11 +384,25 @@ export default function Dashboard({ cases, onViewCase, onNewScreeningClick }) {
                                     <a
                                       href={apiUrl(`/api/screenings/${c.id}/download-zip`)}
                                       className="btn-secondary"
-                                      style={{ padding: '5px 10px', fontSize: '11.5px', color: '#1d4ed8' }}
+                                      style={{ padding: '5px 9px', fontSize: '11.5px', color: '#1d4ed8' }}
                                       title="Download ZIP"
                                     >
                                       <Icons.ZipArchive />
                                     </a>
+                                    <button
+                                      onClick={() => { setDeleteError(''); setCaseToDelete(c); }}
+                                      className="btn-secondary"
+                                      style={{
+                                        padding: '5px 9px',
+                                        fontSize: '11.5px',
+                                        color: '#dc2626',
+                                        borderColor: '#fecdd3',
+                                        backgroundColor: '#fff1f2'
+                                      }}
+                                      title="Delete Case and PDFs from Storage"
+                                    >
+                                      <Icons.Trash />
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
@@ -377,6 +418,117 @@ export default function Dashboard({ cases, onViewCase, onNewScreeningClick }) {
           </div>
         )}
       </section>
+
+      {/* Delete Confirmation Modal */}
+      {caseToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '460px',
+            width: '100%',
+            padding: '24px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '16px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
+                backgroundColor: '#fee2e2',
+                color: '#dc2626',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Icons.Trash />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
+                  Delete Audit Record &amp; Storage?
+                </h3>
+                <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
+                  Are you sure you want to delete the screening record for <strong>{caseToDelete.subjectName}</strong> ({caseToDelete.checkDate})?
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: '#fff1f2',
+              border: '1px solid #fecdd3',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              fontSize: '12px',
+              color: '#9f1239',
+              marginBottom: '20px'
+            }}>
+              ⚠️ <strong>Warning:</strong> This permanently erases the case record and removes all 4 generated compliance evidence PDF files from storage.
+            </div>
+
+            {deleteError && (
+              <div style={{
+                backgroundColor: '#fef2f2',
+                color: '#b91c1c',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                marginBottom: '16px',
+                border: '1px solid #f87171'
+              }}>
+                {deleteError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setCaseToDelete(null)}
+                disabled={isDeleting}
+                className="btn-secondary"
+                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteCase}
+                disabled={isDeleting}
+                style={{
+                  backgroundColor: '#dc2626',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 18px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  opacity: isDeleting ? 0.7 : 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {isDeleting ? 'Deleting from Storage...' : 'Yes, Delete Record'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
